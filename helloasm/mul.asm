@@ -2,15 +2,18 @@
 
                 global          start
 start:
-
-                sub             rsp, 2 * 128 * 8
-                lea             rdi, [rsp + 128 * 8]
                 mov             rcx, 128
+                sub             rsp, 6 * 128 * 8
+                lea             rdi, [rsp + 128 * 8]
                 call            read_long
                 mov             rdi, rsp
                 call            read_long
+
                 lea             rsi, [rsp + 128 * 8]
-                call            add_long_long
+
+                mov             rbp, rsp
+
+                call            mul_long_long
 
                 call            write_long
 
@@ -18,6 +21,67 @@ start:
                 call            write_char
 
                 jmp             exit
+
+; copies long number with address rsi and length equal to rcx value to long number with address rdi
+copy_long:
+                push            rsi
+                push            rdi
+                push            rcx
+
+                rep movsq
+
+                pop             rcx
+                pop             rdi
+                pop             rsi
+
+                ret
+
+; muls two long number
+;    rdi -- address of operand #1 (long number)
+;    rsi -- address of operand #2 (long number)
+;    rcx -- length of long numbers in qwords
+; result:
+;    res is written to rdi
+
+mul_long_long:
+                push            rsi
+                push            rbx
+                push            rcx
+
+                lea             r9, [rbp + 4 * 128 * 8]
+                lea             r10, [rbp + 2 * 128 * 8]
+
+                clc
+.loop:
+                mov             r11, rsi
+                mov             r12, rdi
+
+                mov             rsi, rdi
+                mov             rdi, r10
+                call            copy_long
+
+                mov             rbx, [r11]
+
+                call            mul_long_short
+
+                mov             rsi, rdi
+                mov             rdi, r9
+                call            add_long_long
+
+                lea             rsi, [r11 + 8]
+                lea             r9, [r9 + 8]
+                mov             rdi, r12
+
+                dec             rcx
+                jnz             .loop
+
+                lea             rdi, [rbp + 4 * 128 * 8]
+
+                pop             rcx
+                pop             rbx
+                pop             rsi
+
+                ret
 
 ; adds two long number
 ;    rdi -- address of summand #1 (long number)
@@ -31,6 +95,7 @@ add_long_long:
                 push            rcx
 
                 clc
+
 .loop:
                 mov             rax, [rsi]
                 lea             rsi, [rsi + 8]
@@ -54,6 +119,7 @@ add_long_short:
                 push            rdi
                 push            rcx
                 push            rdx
+                push            rax
 
                 xor             rdx,rdx
 .loop:
@@ -65,6 +131,8 @@ add_long_short:
                 dec             rcx
                 jnz             .loop
 
+
+                pop             rax
                 pop             rdx
                 pop             rcx
                 pop             rdi
@@ -80,6 +148,8 @@ mul_long_short:
                 push            rax
                 push            rdi
                 push            rcx
+                push            rsi
+                push            rbx
 
                 xor             rsi, rsi
 .loop:
@@ -93,9 +163,12 @@ mul_long_short:
                 dec             rcx
                 jnz             .loop
 
+                pop             rbx
+                pop             rsi
                 pop             rcx
                 pop             rdi
                 pop             rax
+
                 ret
 
 ; divides long number by a short
@@ -212,6 +285,8 @@ read_long:
 write_long:
                 push            rax
                 push            rcx
+                push            rsi
+                push            rdi
 
                 mov             rax, 20
                 mul             rcx
@@ -234,6 +309,8 @@ write_long:
                 call            print_string
 
                 mov             rsp, rbp
+                pop             rdi
+                pop             rsi
                 pop             rcx
                 pop             rax
                 ret

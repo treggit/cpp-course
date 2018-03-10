@@ -9,8 +9,9 @@ start:
                 call            read_long
                 mov             rdi, rsp
                 call            read_long
-                lea             rsi, [rsp + 128 * 8]
-                call            add_long_long
+                lea             rdi, [rsp + 128 * 8]
+                mov             rsi, rsp
+                call            sub_long_long
 
                 call            write_long
 
@@ -25,7 +26,7 @@ start:
 ;    rcx -- length of long numbers in qwords
 ; result:
 ;    sum is written to rdi
-add_long_long:
+sub_long_long:
                 push            rdi
                 push            rsi
                 push            rcx
@@ -34,7 +35,7 @@ add_long_long:
 .loop:
                 mov             rax, [rsi]
                 lea             rsi, [rsi + 8]
-                adc             [rdi], rax
+                sbb             [rdi], rax
                 lea             rdi, [rdi + 8]
                 dec             rcx
                 jnz             .loop
