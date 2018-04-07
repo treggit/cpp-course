@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <vector>
 #include <utility>
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 
 #include "big_integer.h"
 
@@ -648,6 +648,7 @@ namespace
         T b = extract_random_element(v);
 
         T ab = a * b;
+        //std::cout << to_string(a) << ' ' << to_string(b) << '\n';
         ASSERT_TRUE(ab / a == b);
         ASSERT_TRUE(ab / b == a);
 

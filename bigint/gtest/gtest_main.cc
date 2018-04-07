@@ -30,8 +30,13 @@
 #include <stdio.h>
 
 #include <gtest/gtest.h>
+#include "big_integer.h"
 
 GTEST_API_ int main(int argc, char **argv) {
+  big_integer b(0);
+  big_integer c(-1);
+  std::cerr << (b < c) << std::endl;
+  return 0;
   printf("Running main() from gtest_main.cc\n");
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
