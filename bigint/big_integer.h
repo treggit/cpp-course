@@ -7,23 +7,18 @@
 
 #include <string>
 #include <vector>
-#include <stdexcept>
-
-using std::vector; //не использовать в хедере
-using std::string;
-
-typedef unsigned int ui;  //не использовать в хедере, плохо тайпдефить стд типы
-typedef unsigned long long ull;
 
 struct big_integer {
+    typedef unsigned int digit_t;
+    typedef unsigned long long double_digit_t;
 
     big_integer();
     big_integer(big_integer const& other);
-    big_integer(bool s, vector <ui> const& d);
+    big_integer(bool s, std::vector <digit_t> const& d);
     big_integer(int x);
     explicit big_integer(std::string const& str);
 
-    big_integer& operator=(big_integer const& other);
+    big_integer& operator=(big_integer other);
 
     friend bool operator==(big_integer const& a, big_integer const& b);
     friend bool operator!=(big_integer const& a, big_integer const& b);
@@ -41,8 +36,8 @@ struct big_integer {
     friend big_integer operator&(big_integer const& a, big_integer const& b);
     friend big_integer operator^(big_integer const& a, big_integer const& b);
     friend big_integer operator|(big_integer const& a, big_integer const& b);
-    friend big_integer operator>>(big_integer const& a, ui shift);
-    friend big_integer operator<<(big_integer const& a, ui shift);
+    friend big_integer operator>>(big_integer const& a, unsigned int shift);
+    friend big_integer operator<<(big_integer const& a, unsigned int shift);
 
     big_integer& operator+=(big_integer const& b);
     big_integer& operator-=(big_integer const& b);
@@ -53,8 +48,8 @@ struct big_integer {
     big_integer& operator&=(big_integer const& b);
     big_integer& operator^=(big_integer const& b);
     big_integer& operator|=(big_integer const& b);
-    big_integer& operator>>=(ui shift);
-    big_integer& operator<<=(ui shift);
+    big_integer& operator>>=(unsigned int shift);
+    big_integer& operator<<=(unsigned int shift);
 
     big_integer operator+() const;
     big_integer operator-() const;
@@ -70,14 +65,15 @@ struct big_integer {
     friend void swap(big_integer& a, big_integer& b);
 
     big_integer abs() const;
-    bool is_zero_digit(ui d) const;
+    bool is_zero_digit(unsigned int d) const;
+    bool is_neg_one() const;
     size_t length() const;
-    ui get_digit(size_t pos) const;
+    digit_t get_digit(size_t pos) const;
     bool is_zero() const;
 
 private:
-    std::vector <ui> digits;
     bool sign;
+    std::vector <digit_t> digits;
 
 
     void trim();

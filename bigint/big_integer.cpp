@@ -4,24 +4,30 @@
 
 #include "big_integer.h"
 
-const ui DIGIT_MAX = UINT32_MAX;
+const unsigned int DIGIT_MAX = UINT32_MAX;
 const int BASE = 32;
 const int DEC_BASE = 1e9;
 
+using std::vector;
+using std::string;
+
+typedef unsigned int digit_t;
+typedef unsigned long long double_digit_t;
+
 //cast
-ui digit_cast(int x) {
-    return (ui) (x & DIGIT_MAX);
+digit_t digit_cast(int x) {
+    return (digit_t) (x & DIGIT_MAX);
 }
 
-ui digit_cast(long long x) {
-    return (ui) (x & DIGIT_MAX);
+double_digit_t double_digit_cast(digit_t x) {
+    return (double_digit_t) x;
 }
 
-ui digit_cast(ull x) {
-    return (ui) (x & DIGIT_MAX);
+digit_t digit_cast(double_digit_t x) {
+    return (digit_t) (x & DIGIT_MAX);
 }
 
-ui digit_cast(ui x) {
+digit_t digit_cast(digit_t x) {
     return x;
 }
 
@@ -36,12 +42,12 @@ string to_string(big_integer const& b) {
         return "0";
     }
 
-    if (b.length() == 0) {
+    if (b.is_neg_one()) {
         return "-1";
     }
     big_integer x = b.abs();
     while (!x.is_zero()) {
-        ui cur = (x % DEC_BASE).get_digit(0);
+        digit_t cur = (x % DEC_BASE).get_digit(0);
 
         for (size_t i = 0; i < 9; i++) {
             str.push_back(char('0' + (cur % 10)));
@@ -59,8 +65,8 @@ string to_string(big_integer const& b) {
     return str;
 }
 
-void div_big_small(vector <ui> const& a, const ui b, vector <ui>& res) {
-    ull c, carry = 0;
+void div_long_short(vector<digit_t> const &a, const digit_t b, vector<digit_t> &res) {
+    double_digit_t c, carry = 0;
     res.resize(a.size());
     for (size_t i = a.size(); i-- > 0;) {
         c = (carry << 32) + a[i];
@@ -69,11 +75,11 @@ void div_big_small(vector <ui> const& a, const ui b, vector <ui>& res) {
     }
 }
 
-void mod_big_small(vector <ui> const& a, const ui b, vector <ui>& res) {
+void mod_long_short(vector <digit_t> const& a, const digit_t b, vector <digit_t>& res) {
     res.resize(1);
-    ull carry = 0;
+    double_digit_t carry = 0;
     for (size_t i = a.size(); i-- > 0;) {
-        carry = (carry * (1ull + DIGIT_MAX) + a[i]) % b;
+        carry = (carry * (double_digit_cast(1)+ DIGIT_MAX) + a[i]) % b;
     }
     res[0] = carry;
 }
@@ -82,8 +88,12 @@ size_t big_integer::length() const {
     return digits.size();
 }
 
-bool big_integer::is_zero_digit(ui d) const {
+bool big_integer::is_zero_digit(digit_t d) const {
     return (sign && d == DIGIT_MAX) || (!sign && d == 0);
+}
+
+bool big_integer::is_neg_one() const {
+    return sign && length() == 0;
 }
 
 void big_integer::trim() {
@@ -92,7 +102,7 @@ void big_integer::trim() {
     }
 }
 
-ui big_integer::get_digit(size_t pos) const {
+digit_t big_integer::get_digit(size_t pos) const {
     if (pos >= digits.size()) {
         return (sign ? DIGIT_MAX : 0);
     }
@@ -110,13 +120,13 @@ void big_integer::normalize() {
     if (!sign) {
         return;
     }
-    ull c = 0, carry = 1;
+    double_digit_t c = 0, carry = 1;
+    digits.resize(digits.size() + 1);
     for (size_t i = 0; i < length(); i++) {
-        c = carry + (~digits[i]);
+        c = carry + (~get_digit(i));
         digits[i] = digit_cast(c);
         carry = c >> BASE;
     }
-    digits.push_back(digit_cast(carry + DIGIT_MAX));
     trim();
 }
 
@@ -136,12 +146,17 @@ big_integer::big_integer(big_integer const& other)
     trim();
 }
 
-big_integer::big_integer(const int x) : digits(1), sign(x < 0) {
+big_integer::big_integer(const int x)
+        : sign(x < 0),
+          digits(1)
+           {
     digits[0] = digit_cast(x);
     trim();
 }
 
-big_integer::big_integer(bool s, vector <ui> const& d) : sign(s), digits(d) {
+big_integer::big_integer(bool s, vector <digit_t> const& d)
+        : sign(s),
+          digits(d) {
     trim();
 };
 
@@ -149,8 +164,8 @@ big_integer::big_integer(bool s, vector <ui> const& d) : sign(s), digits(d) {
 big_integer::big_integer(string const& str) {
     big_integer new_num = 0;
     bool new_sign = (str[0] == '-');
-    ui acc = 0;
-    ui b = 1;
+    digit_t acc = 0;
+    digit_t b = 1;
     for (size_t i = new_sign; i < str.size(); i++) {
         if (str[i] < '0' || str[i] > '9') {
             throw std::runtime_error("Digit expected");
@@ -177,15 +192,13 @@ big_integer::big_integer(string const& str) {
             new_num += acc;
         }
     }
-    std::swap(digits, new_num.digits);
-    std::swap(sign, new_num.sign);
+    swap(*this, new_num);
 }
 
 //operators
 
-big_integer& big_integer::operator=(big_integer const& other) {
-    big_integer tmp(other);
-    swap(*this, tmp);
+big_integer& big_integer::operator=(big_integer other) {
+    swap(*this, other);
     return *this;
 }
 
@@ -202,6 +215,9 @@ bool operator!=(big_integer const &a, big_integer const &b) {
 bool operator<(big_integer const &a, big_integer const &b) {
     if (a.sign != b.sign) {
         return a.sign;
+    }
+    if (!a.is_neg_one() && b.is_neg_one()) {
+        return true;
     }
     if (a.length() != b.length()) {
         return a.length() < b.length();
@@ -229,42 +245,42 @@ bool operator>=(big_integer const &a, big_integer const &b) {
 //arithmetic binary
 
 big_integer operator+(big_integer const& a, big_integer const& b) {
-    size_t n = std::max(a.length(), b.length()) + 2;
-    vector <ui> res(n);
-    ull carry = 0;
-    ull c;
+    size_t n = std::max(a.length(), b.length()) + 1;
+    vector <digit_t> res(n);
+    double_digit_t carry = 0;
+    double_digit_t c;
     for (size_t i = 0; i < n; i++) {
         c = carry + a.get_digit(i) + b.get_digit(i);
         res[i] = digit_cast(c);
         carry = c >> BASE;
     }
-    bool res_sign = (res.back() & (1 << (BASE - 1))); // res.back() == DIG_MAX?
+    bool res_sign = (res.back() & (1 << (BASE - 1)));
     return big_integer(res_sign, res);
 }
 
 big_integer operator-(big_integer const& a, big_integer const& b) {
-    size_t n = std::max(a.length(), b.length()) + 2;
-    vector <ui> res(n);
-    ull carry = 1;
-    ull c;
+    size_t n = std::max(a.length(), b.length()) + 1;
+    vector <digit_t> res(n);
+    double_digit_t carry = 1;
+    double_digit_t c;
     for (size_t i = 0; i < n; i++) {
         c = carry + a.get_digit(i) + (~b.get_digit(i));
         res[i] = digit_cast(c);
         carry = c >> BASE;
     }
-    bool res_sign = (res.back() & (1 << (BASE - 1))); // res.back() == DIG_MAX?
+    bool res_sign = (res.back() & (1 << (BASE - 1)));
     return big_integer(res_sign, res);
 }
 
-void long_mul(vector <ui> const& a, vector <ui> const& b, vector <ui>& res) {
+void long_mul(vector <digit_t> const& a, vector <digit_t> const& b, vector <digit_t>& res) {
     res.resize(a.size() + b.size() + 1, 0);
-    ull carry = 0, c = 0;
-    ull mul;
+    double_digit_t carry = 0, c = 0;
+    double_digit_t mul;
     for (size_t i = 0; i < a.size(); i++) {
         carry = 0;
         for (size_t j = 0; j < b.size(); j++) {
-            mul = 1ull * a[i] * b[j];
-            c = carry + res[i + j] + (mul & DIGIT_MAX);
+            mul = double_digit_cast(a[i]) * b[j];
+            c = carry + res[i + j] + digit_cast(mul);
             res[i + j] = digit_cast(c);
             carry = (c >> BASE) + (mul >> BASE);
         }
@@ -272,7 +288,7 @@ void long_mul(vector <ui> const& a, vector <ui> const& b, vector <ui>& res) {
     }
 }
 
-bool smaller(vector <ui> const& a, vector <ui> const& b, const size_t shift) {
+bool smaller(vector <digit_t> const& a, vector <digit_t> const& b, const size_t shift) {
     for (size_t i = b.size(); i-- > 0;) {
         if (a[i + shift] != b[i]) {
             return (a[i + shift] < b[i]);
@@ -281,55 +297,60 @@ bool smaller(vector <ui> const& a, vector <ui> const& b, const size_t shift) {
     return false;
 }
 
-void vector_sub(vector <ui>& a, vector <ui> const& b, const size_t shift) {
-    ull carry = 1, c;
+void vector_dif(vector<digit_t> &a, vector<digit_t> const &b, const size_t shift) {
+    double_digit_t carry = 1;
+    double_digit_t c;
     for (size_t i = 0; i < b.size(); i++) {
         c = carry + a[i + shift] + (~b[i]);
         a[i + shift] = digit_cast(c);
         carry = c >> BASE;
     }
 }
-void mul_big_small(vector <ui> const& a, const ui b, vector <ui>& res) {
-    ull c, carry = 0, mul;
+void mul_long_short(vector<digit_t> const &a, const digit_t b, vector<digit_t> &res) {
+    double_digit_t c;
+    double_digit_t carry = 0;
+    double_digit_t mul;
     res.resize(a.size() + 1);
     for (size_t i = 0; i < a.size(); i++) {
-        mul = 1ull * a[i] * b;
-        c = (mul & DIGIT_MAX) + carry;
+        mul = double_digit_cast(a[i]) * b;
+        c = mul + carry;
         res[i] = digit_cast(c);
-        carry = (c >> BASE) + (mul >> BASE);
+        carry = (c >> BASE);
     }
     res[a.size()] = digit_cast(carry);
 }
 
-ui trial(const ui a, const ui b, const ui div) {
-    return digit_cast(std::min(1ull + DIGIT_MAX, ((ull(a) << BASE) + b) / div));
+digit_t trial(const digit_t a, const digit_t b, const digit_t div) {
+    return digit_cast(std::min(double_digit_cast(1) + DIGIT_MAX, (((double_digit_t(a)) << BASE) + b) / div));
 }
 
-void long_div(vector <ui> const& a, vector <ui> const& b, vector <ui>& res) {
-    ui scale_factor = digit_cast((1ull + DIGIT_MAX) / (1ull + b.back()));
-    vector<ui> q, d, dt;
-    mul_big_small(a, scale_factor, q);
-    mul_big_small(b, scale_factor, d);
+void long_div(vector <digit_t> const& a, vector <digit_t> const& b, vector <digit_t>& res) {
+    digit_t scale_factor = digit_cast((double_digit_cast(1) + DIGIT_MAX) / (double_digit_cast(1) + b.back()));
+    vector<digit_t> q;
+    vector<digit_t> d;
+    vector<digit_t> dt;
+    mul_long_short(a, scale_factor, q);
+    mul_long_short(b, scale_factor, d);
     while (!d.empty() && d.back() == 0) {
         d.pop_back();
     }
     while (!q.empty() && q.back() == 0) {
         q.pop_back();
     }
-    ui div = d.back();
+    digit_t div = d.back();
     size_t n = a.size();
     size_t m = b.size();
     res.resize(n - m + 2);
     q.push_back(0);
     for (size_t i = n - m + 1; i-- > 0;) {
-        ui qt = trial(q[i + m], q[i + m - 1], div);
-        mul_big_small(d, qt, dt);
+        digit_t qt = trial(q[i + m], q[i + m - 1], div);
+        mul_long_short(d, qt, dt);
         while (smaller(q, dt, i)) {
             qt--;
-            mul_big_small(d, qt, dt);
+            mul_long_short(d, qt, dt);
         }
         res[i] = qt;
-        vector_sub(q, dt, i);
+        vector_dif(q, dt, i);
     }
 }
 
@@ -339,12 +360,12 @@ big_integer operator*(big_integer const& a, big_integer const& b) {
     }
     big_integer x(a.abs());
     big_integer y(b.abs());
-    vector <ui> res;
+    vector <digit_t> res;
     if (x.length() < y.length()) {
         swap(x, y);
     }
     if (y.length() == 1) {
-        mul_big_small(x.digits, y.get_digit(0), res);
+        mul_long_short(x.digits, y.get_digit(0), res);
     }
     else {
         long_mul(x.digits, y.digits, res);
@@ -359,16 +380,16 @@ big_integer operator/(big_integer const& a, big_integer const& b) {
         throw std::runtime_error("Division by zero");
     }
 
-    big_integer x(a.abs());
-    big_integer y(b.abs());
+    big_integer x = a.abs();
+    big_integer y = b.abs();
 
     if (x < y) {
         return 0;
     }
 
-    vector <ui> res;
+    vector <digit_t> res;
     if (y.length() == 1) {
-        div_big_small(x.digits, y.get_digit(0), res);
+        div_long_short(x.digits, y.get_digit(0), res);
     }
     else {
         long_div(x.digits, y.digits, res);
@@ -415,10 +436,10 @@ big_integer big_integer::operator-() const {
     if (length() == 0) {
         return 1;
     }
-    size_t n = digits.size() + 2;
-    ull carry = 1;
-    ull c;
-    vector <ui> res(n);
+    size_t n = digits.size() + 1;
+    double_digit_t carry = 1;
+    double_digit_t c;
+    vector <digit_t> res(n);
     for (size_t i = 0; i < n; i++) {
         c = carry + (~get_digit(i));
         res[i] = digit_cast(c);
@@ -428,7 +449,7 @@ big_integer big_integer::operator-() const {
 }
 
 big_integer big_integer::operator~() const {
-    vector <ui> res;
+    vector <digit_t> res;
     for (size_t i = 0; i < digits.size(); i++) {
         res.push_back(~digits[i]);
     }
@@ -458,7 +479,7 @@ big_integer big_integer::operator--(int) {
 //bitwise
 
 big_integer operator&(big_integer const& a, big_integer const& b) {
-    vector <ui> res(std::max(a.length(), b.length()));
+    vector <digit_t> res(std::max(a.length(), b.length()));
     for (size_t i = 0; i < res.size(); i++) {
         res[i] = a.get_digit(i) & b.get_digit(i);
     }
@@ -466,7 +487,7 @@ big_integer operator&(big_integer const& a, big_integer const& b) {
 }
 
 big_integer operator|(big_integer const& a, big_integer const& b) {
-    vector <ui> res(std::max(a.length(), b.length()));
+    vector <digit_t> res(std::max(a.length(), b.length()));
     for (size_t i = 0; i < res.size(); i++) {
         res[i] = a.get_digit(i) | b.get_digit(i);
     }
@@ -474,17 +495,17 @@ big_integer operator|(big_integer const& a, big_integer const& b) {
 }
 
 big_integer operator^(big_integer const& a, big_integer const& b) {
-    vector <ui> res(std::max(a.length(), b.length()));
+    vector <digit_t> res(std::max(a.length(), b.length()));
     for (size_t i = 0; i < res.size(); i++) {
         res[i] = a.get_digit(i) ^ b.get_digit(i);
     }
     return big_integer(a.sign ^ b.sign, res);
 }
 
-big_integer operator>>(big_integer const& a, ui shift) {
-    vector <ui> res;
+big_integer operator>>(big_integer const& a, digit_t shift) {
+    vector <digit_t> res;
     size_t mod = shift % BASE;
-    ui c;
+    digit_t c;
     for (size_t i = shift / BASE; i < a.length(); i++) {
         c = (a.get_digit(i) >> mod) + ((a.get_digit(i + 1) << (BASE - mod)) & DIGIT_MAX);
         res.push_back(c);
@@ -492,10 +513,10 @@ big_integer operator>>(big_integer const& a, ui shift) {
     return big_integer(a.sign, res);
 }
 
-big_integer operator<<(big_integer const& a, ui shift) {
-    vector <ui> res(shift / BASE, 0);
+big_integer operator<<(big_integer const& a, digit_t shift) {
+    vector <digit_t> res(shift / BASE, 0);
     size_t mod = shift % BASE;
-    ui c;
+    digit_t c;
     for (size_t i = 0; i < a.length(); i++) {
         c = ((a.get_digit(i) << mod) & DIGIT_MAX) + (i > 0 ? (a.get_digit(i - 1) >> (BASE - mod)) : 0);
         res.push_back(c);
@@ -515,11 +536,11 @@ big_integer& big_integer::operator^=(big_integer const& b) {
     return *this = *this ^ b;
 }
 
-big_integer& big_integer::operator>>=(ui shift) {
+big_integer& big_integer::operator>>=(digit_t shift) {
     return *this = *this >> shift;
 }
 
-big_integer& big_integer::operator<<=(ui shift) {
+big_integer& big_integer::operator<<=(digit_t shift) {
     return *this = *this << shift;
 }
 
