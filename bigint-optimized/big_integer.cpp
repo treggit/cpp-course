@@ -3,6 +3,7 @@
 //
 
 #include "big_integer.h"
+#include <functional>
 
 const unsigned int DIGIT_MAX = UINT32_MAX;
 const int BASE = 32;
@@ -15,15 +16,15 @@ typedef unsigned long long double_digit_t;
 
 //cast
 digit_t digit_cast(int x) {
-    return (digit_t) (x & DIGIT_MAX);
+    return static_cast <digit_t> (x & DIGIT_MAX);
 }
 
 double_digit_t double_digit_cast(digit_t x) {
-    return (double_digit_t) x;
+    return static_cast <digit_t> (x);
 }
 
 digit_t digit_cast(double_digit_t x) {
-    return (digit_t) (x & DIGIT_MAX);
+    return static_cast <digit_t> (x & DIGIT_MAX);
 }
 
 digit_t digit_cast(digit_t x) {
@@ -480,27 +481,15 @@ big_integer big_integer::operator--(int) {
 //bitwise
 
 big_integer operator&(big_integer const& a, big_integer const& b) {
-    digit_vector res(std::max(a.length(), b.length()));
-    for (size_t i = 0; i < res.size(); i++) {
-        res[i] = a.get_digit(i) & b.get_digit(i);
-    }
-    return big_integer(a.sign & b.sign, res);
+    return apply_bitwise(a, b, std::bit_and <digit_t> ());
 }
 
 big_integer operator|(big_integer const& a, big_integer const& b) {
-    digit_vector res(std::max(a.length(), b.length()));
-    for (size_t i = 0; i < res.size(); i++) {
-        res[i] = a.get_digit(i) | b.get_digit(i);
-    }
-    return big_integer(a.sign | b.sign, res);
+    return apply_bitwise(a, b, std::bit_or <digit_t> ());
 }
 
 big_integer operator^(big_integer const& a, big_integer const& b) {
-    digit_vector res(std::max(a.length(), b.length()));
-    for (size_t i = 0; i < res.size(); i++) {
-        res[i] = a.get_digit(i) ^ b.get_digit(i);
-    }
-    return big_integer(a.sign ^ b.sign, res);
+    return apply_bitwise(a, b, std::bit_xor <digit_t> ());
 }
 
 big_integer operator>>(big_integer const& a, digit_t shift) {

@@ -62,7 +62,7 @@ struct big_integer {
     big_integer operator--(int);
 
     friend std::string to_string(big_integer const& a);
-    friend void swap(big_integer& a, big_integer& b);
+    friend void swap(big_integer& a, big_integer& b) noexcept;
 
     big_integer abs() const;
     bool is_zero_digit(unsigned int d) const;

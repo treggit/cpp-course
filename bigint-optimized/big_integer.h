@@ -33,6 +33,15 @@ struct big_integer {
     friend big_integer operator/(big_integer const& a, big_integer const& b);
     friend big_integer operator%(big_integer const& a, big_integer const& b);
 
+    template <class FunctorT>
+    friend big_integer apply_bitwise(big_integer const& a, big_integer const& b, FunctorT functor) {
+        digit_vector res(std::max(a.length(), b.length()));
+        for (size_t i = 0; i < res.size(); i++) {
+            res[i] = functor(a.get_digit(i), b.get_digit(i));
+        }
+        return big_integer(functor(a.sign, b.sign), res);
+    }
+
     friend big_integer operator&(big_integer const& a, big_integer const& b);
     friend big_integer operator^(big_integer const& a, big_integer const& b);
     friend big_integer operator|(big_integer const& a, big_integer const& b);

@@ -11,16 +11,15 @@
 
 struct digit_vector {
     typedef unsigned int digit_t;
-    static constexpr double EXPAND_FACTOR = 1.5;
+    static constexpr float EXPAND_FACTOR = 1.5;
     static const size_t SMALL_STORAGE_MAX_SIZE = 4;
 
     struct buffer {
-        explicit buffer(size_t n = 0, digit_t value = 0) : _capacity(0), _active(nullptr), _is_big(false) {
+        explicit buffer(size_t n = 0, digit_t value = 0) : _active(nullptr),  _len(n), _capacity(0), _is_big(false) {
             reserve(n);
             for (size_t i = 0; i < n; i++) {
                 _active[i] = value;
             }
-            _len = n;
         }
 
         ~buffer() {
@@ -29,12 +28,11 @@ struct digit_vector {
             }
         }
 
-        buffer(buffer const& other, size_t n = 0) : _len(0), _capacity(0), _active(nullptr), _is_big(false) {
+        buffer(buffer const& other, size_t n = 0) : _active(nullptr), _len(other._len), _capacity(0) , _is_big(false) {
             reserve(std::max(other._capacity, n));
             if (other._len) {
                 std::copy(other._active, other._active + other._len, _active);
             }
-            _len = other._len;
         }
 
         buffer&operator=(buffer other) {
@@ -44,14 +42,14 @@ struct digit_vector {
 
         void reserve(size_t n) {
             if (n <= SMALL_STORAGE_MAX_SIZE && _capacity <= SMALL_STORAGE_MAX_SIZE) {
-                _active = _data.inplace;
+                _active = _data.small;
                 _capacity = SMALL_STORAGE_MAX_SIZE;
                 _is_big = false;
                 return;
             }
             if (_capacity < n) {
                 size_t need = std::max(static_cast <size_t> (_capacity * EXPAND_FACTOR), n);
-                auto new_data = (digit_t*) malloc(sizeof(digit_t) * need);
+                auto new_data = static_cast <digit_t*> (malloc(sizeof(digit_t) * need));
                 if (_active != nullptr) {
                     std::copy(_active, _active + _len, new_data);
                     if (_is_big) {
@@ -92,21 +90,19 @@ struct digit_vector {
         }
 
         union state {
-            digit_t inplace[SMALL_STORAGE_MAX_SIZE];
+            digit_t small[SMALL_STORAGE_MAX_SIZE];
             digit_t* big;
-
-            state() {}
-            ~state() {};
         } _data;
+        digit_t* _active;
         size_t _len;
         size_t _capacity;
-        digit_t* _active;
         bool _is_big;
     };
 
     explicit digit_vector(size_t n = 0, digit_t value = 0);
     ~digit_vector();
     digit_vector(digit_vector const& other);
+    digit_vector&operator=(digit_vector other);
     digit_t&operator[](size_t pos);
     digit_t operator[](size_t pos) const;
     size_t size() const;

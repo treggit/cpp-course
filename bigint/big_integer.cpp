@@ -31,7 +31,7 @@ digit_t digit_cast(digit_t x) {
     return x;
 }
 
-void swap(big_integer& a, big_integer& b) {
+void swap(big_integer& a, big_integer& b) noexcept {
     std::swap(a.sign, b.sign);
     std::swap(a.digits, b.digits);
 }
@@ -136,12 +136,12 @@ bool big_integer::is_zero() const {
 
 //constructors
 
-big_integer::big_integer() : sign(false) {}
+big_integer::big_integer() : sign(false), digits(0) {}
 
 
 big_integer::big_integer(big_integer const& other)
-        : digits(other.digits)
-        , sign(other.sign)
+        : sign(other.sign)
+        , digits(other.digits)
 {
     trim();
 }
@@ -160,8 +160,7 @@ big_integer::big_integer(bool s, vector <digit_t> const& d)
     trim();
 };
 
-
-big_integer::big_integer(string const& str) {
+big_integer to_number(string const& str) {
     big_integer new_num = 0;
     bool new_sign = (str[0] == '-');
     digit_t acc = 0;
@@ -192,8 +191,10 @@ big_integer::big_integer(string const& str) {
             new_num += acc;
         }
     }
-    swap(*this, new_num);
+    return new_num;
 }
+
+big_integer::big_integer(string const& str) : big_integer(to_number(str)) {}
 
 //operators
 

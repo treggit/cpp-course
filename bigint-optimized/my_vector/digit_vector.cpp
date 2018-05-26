@@ -5,10 +5,8 @@
 #include "digit_vector.h"
 
 
-digit_vector::digit_vector(size_t n, digit_t value) {
-    _is_shareable = true;
-    storage = std::make_shared <buffer> (buffer(n, value));
-}
+digit_vector::digit_vector(size_t n, digit_t value) : _is_shareable(true),
+                                                      storage(std::make_shared <buffer> (buffer(n, value))) {}
 
 digit_vector::~digit_vector() {
     if (storage != nullptr) {
@@ -16,15 +14,18 @@ digit_vector::~digit_vector() {
     }
 }
 
-digit_vector::digit_vector(digit_vector const& other) {
-    this->~digit_vector();
-    _is_shareable = true;
+digit_vector::digit_vector(digit_vector const& other) : _is_shareable(true) {
     if (other._is_shareable) {
         storage = other.storage;
     }
     else {
         storage = std::make_shared <buffer> (buffer(*other.storage));
     }
+}
+
+digit_vector &digit_vector::operator=(digit_vector other) {
+    swap(other, *this);
+    return *this;
 }
 
 digit_vector::digit_t& digit_vector::operator[](size_t pos) {
@@ -52,9 +53,12 @@ void digit_vector::resize(size_t n, digit_vector::digit_t value) {
     while (storage->_len < n) {
         (storage->data())[storage->_len++] = value;
     }
+    storage->_len = n;
 }
 
 digit_vector::digit_t& digit_vector::back() {
+    try_detach(storage->_capacity);
+    _is_shareable = false;
     return (*this)[storage->_len - 1];
 }
 
@@ -87,7 +91,6 @@ bool operator!=(digit_vector const &a, digit_vector const &b) {
 void digit_vector::try_detach(size_t need) {
     if (storage.use_count() > 1) {
         buffer new_buffer(*storage, need);
-        this->~digit_vector();
         storage = std::make_shared <buffer> (new_buffer);
     }
     else {
