@@ -27,10 +27,6 @@ digit_t digit_cast(double_digit_t x) {
     return static_cast <digit_t> (x & DIGIT_MAX);
 }
 
-digit_t digit_cast(digit_t x) {
-    return x;
-}
-
 void swap(big_integer& a, big_integer& b) {
     std::swap(a.sign, b.sign);
     std::swap(a.digits, b.digits);
@@ -79,7 +75,7 @@ void mod_long_short(digit_vector const& a, const digit_t b, digit_vector& res) {
     res.resize(1);
     double_digit_t carry = 0;
     for (size_t i = a.size(); i-- > 0;) {
-        carry = (carry * (double_digit_cast(1)+ DIGIT_MAX) + a[i]) % b;
+        carry = (carry * (double_digit_cast(1) + DIGIT_MAX) + a[i]) % b;
     }
     res[0] = carry;
 }

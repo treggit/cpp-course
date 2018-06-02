@@ -5,10 +5,11 @@
 #ifndef BIGINT_BIG_INTEGER_H
 #define BIGINT_BIG_INTEGER_H
 
-#include <string>
 #include "digit_vector.h"
+#include <string>
 
 struct big_integer {
+
     typedef unsigned int digit_t;
     typedef unsigned long long double_digit_t;
 

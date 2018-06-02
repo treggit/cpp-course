@@ -8,11 +8,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
+#include <memory>
+#include <new>
 
 struct digit_vector {
     typedef unsigned int digit_t;
     static constexpr float EXPAND_FACTOR = 1.5;
-    static const size_t SMALL_STORAGE_MAX_SIZE = 4;
+    static const size_t SMALL_STORAGE_MAX_SIZE = 8;
 
     struct buffer {
         explicit buffer(size_t n = 0, digit_t value = 0) : _active(nullptr),  _len(n), _capacity(0), _is_big(false) {
@@ -24,12 +26,12 @@ struct digit_vector {
 
         ~buffer() {
             if (_active != nullptr && _is_big) {
-                free(_active);
+                operator delete(_active);
             }
         }
 
         buffer(buffer const& other, size_t n = 0) : _active(nullptr), _len(other._len), _capacity(0) , _is_big(false) {
-            reserve(std::max(other._capacity, n));
+            reserve(std::max(other._len, n));
             if (other._len) {
                 std::copy(other._active, other._active + other._len, _active);
             }
@@ -49,11 +51,11 @@ struct digit_vector {
             }
             if (_capacity < n) {
                 size_t need = std::max(static_cast <size_t> (_capacity * EXPAND_FACTOR), n);
-                auto new_data = static_cast <digit_t*> (malloc(sizeof(digit_t) * need));
+                auto new_data = static_cast <digit_t*> (operator new(sizeof(digit_t) * need));
                 if (_active != nullptr) {
                     std::copy(_active, _active + _len, new_data);
                     if (_is_big) {
-                        free(_active);
+                        operator delete(_active);
                     }
                 }
                 _data.big = new_data;
@@ -89,7 +91,7 @@ struct digit_vector {
             std::swap(a._data, b._data);
         }
 
-        union state {
+        union {
             digit_t small[SMALL_STORAGE_MAX_SIZE];
             digit_t* big;
         } _data;
